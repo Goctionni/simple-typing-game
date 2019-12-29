@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Typing game</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        @keyframes _tg-char-animation {
+            0% {
+                transform: scale(0);
+            }
+            50% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(0);
+            }
+        }
+        html, body, ._tg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        ._tg-char {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            font-size: 50px;
+            text-align: center;
+            font-weight: bold;
+            margin: -25px;
+            transform: scale(0);
+            text-transform: uppercase;
+            animation: 2s ease-in-out 0s 1 _tg-char-animation;
+            transition: opacity .3s ease-in;
+        }
+        ._tg-invalid {
+            color: #F00;
+        }
+        ._tg-completed {
+            color: #090;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        function startTypingGame(endCallback, scoreCallback, maxScore, pctValid, minInterval, maxInterval, validDuration, errorPenalty, validClass, invalidClass, completedClass, targetElement) {
+            // Ensure everything is initialized
+            var characters = 'abcdefghijklmnopqrstuvwxyz';
+            var score = 0;
+            var validCharactersShown = 0;
+            maxScore = maxScore || 10;
+            pctValid = (!pctValid ? .9 : (pctValid <= 1 ? pctValid : pctValid / 100));
+            minInterval = minInterval || 1500;
+            maxInterval = maxInterval || 2500;
+            validDuration = validDuration || 1500;
+            errorPenalty = (typeof errorPenalty === 'number') ? errorPenalty : -1;
+            validClass = validClass || '_tg-valid';
+            invalidClass = invalidClass || '_tg-invalid';
+            completedClass = completedClass || '_tg-completed';
+            // Ensure a target exists
+            if (typeof targetElement === 'string') {
+                targetElement = document.querySelector(targetElement);
+            }
+            if (!targetElement) {
+                targetElement = document.createElement('div');
+                targetElement.classList.add('_tg-container');
+                document.body.appendChild(targetElement);
+            }
+            // Array that contains functions that will check if something is valid
+            var activeValidChecks = [];
+            // Keypress handler
+            function keypressHandler(e) {
+                // prevent key action if a valid game-key
+                if (characters.indexOf(e.key) !== -1) e.preventDefault();
+                // Try find an active character for the keypress
+                var validForIndex = activeValidChecks.findIndex((item) => item.check(e.key));
+                // If not found, decrease score
+                if (validForIndex === -1) {
+                    // Report score minus one
+                    scoreCallback(--score);
+                } else {
+                    // If found, increase score and stuff
+                    // Increment score and report it
+                    scoreCallback(++score);
+                    // Remove from valid check
+                    var removedItem = activeValidChecks.splice(validForIndex, 1).pop();
+                    // Remove element from screen
+                    removedItem.element.classList.add(completedClass);
+                }
+            };
+            document.body.addEventListener('keydown', keypressHandler);
+            // Define function that shows a character the player must type
+            function showChar() {
+                // Will this character be a fake?
+                var valid = Math.random() < pctValid;
+                // generate random character to show
+                var char = characters[Math.floor(Math.random()  * characters.length)];
+                // create something to show on screen
+                var el = document.createElement('div');
+                el.classList.add('_tg-char', valid ? validClass : invalidClass);
+                el.appendChild(document.createTextNode(char));
+                targetElement.appendChild(el);
+                // If character is valid
+                if (valid) {
+                    // Add listener
+                    activeValidChecks.push({
+                        element: el,
+                        check: (c) => c === char,
+                    });
+                    // Remove listener after timeout
+                    setTimeout(() => {
+                        var index = activeValidChecks.findIndex((item) => item.element === el);
+                        if (index !== -1) {
+                            activeValidChecks.splice(index, 1);
+                            scoreCallback(--score);
+                        }
+                    }, validDuration);
+                }
+                // Remove element after timeout
+                setTimeout(() => {
+                    targetElement.removeChild(el);
+                }, validDuration);
+                // If valid, increment counter for valid characters show
+                if (valid) validCharactersShown++;
+                if (validCharactersShown < maxScore) {
+                    // Figure out when to show the next char
+                    var delay = minInterval + Math.floor(Math.random() * (maxInterval - minInterval));
+                    setTimeout(showChar, delay);
+                } else {
+                    // Give time for the last key to be pressed
+                    setTimeout(() => {
+                        document.body.removeEventListener('keydown', keypressHandler);
+                        endCallback(score);
+                    }, validDuration);
+                }
+            }
+            // Focus on body (mostly for keydown detection just in case)
+            document.body.focus();
+            showChar();
+        }
+
+        function endCallback(score) {
+            console.log('Game complete', { score });
+        }
+        function scoreChangedCallback(score) {
+            console.log('Score changed', { score });
+        }
+        startTypingGame(endCallback, scoreChangedCallback);
+    </script>
+</body>
+</html>
