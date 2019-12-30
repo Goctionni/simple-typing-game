@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Typing Game 2</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        html, body {
+            background-color: #333;
+            color: #FFF;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        /* The below is part of the game */
+        .type-game,
+        .type-game * {
+            box-sizing: border-box;
+        }
+        .type-game-status {
+            text-align: center;
+            font-size: 40px;
+            background-color: #666;
+            height: 1.5em;
+            line-height: 1.5em;
+        }
+        .type-game .type-game-area {
+            position: relative;
+            width: 600px;
+            height: 300px;
+            border: solid #666 2px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .type-game .flash {
+            position: absolute;
+            width: 600px;
+            height: 300px;
+            pointer-events: none;
+            opacity: 0;
+            box-shadow: inset 0 0 200px rgba(255,0,0,.25);
+            border: solid #F00 2px;
+        }
+        .type-game .flash.show {
+            animation: flash .2s ease-in-out 0s 1;
+        }
+        .type-game-char {
+            position: absolute;
+            font-size: 70px;
+            height: 70px;
+            width: 70px;
+            color: #FFF;
+            text-transform: uppercase;
+            font-family: monospace;
+            opacity: 0;
+            animation: flash .3s ease-in-out 0s 1;
+        }
+
+        @keyframes flash {
+            0% {
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tavern game</h1>
+    <p>Hit the letter</p>
+    <!-- Widget Starts here -->
+    <div class="type-game">
+        <div class="type-game-status"></div>
+        <div class="flash"></div>
+        <div class="type-game-area"></div>
+        <button type="button" id="type-game-button">Start game</button>
+    </div>
+    <script>
+        (() => {
+            var _container = document.querySelector('.type-game');
+            var _target = _container.querySelector('.type-game-area');
+            var _flash = _container.querySelector('.flash');
+            var _startBtn = _container.querySelector('#type-game-button');
+            var _status = _container.querySelector('.type-game-status');
+
+            var removeFlashTimeout = 0;
+            var message = 'thisiswhatyoushouldtype';
+            var currentCharacter = '';
+            var currentCharacterIndex = 0;
+            var captureCharacters = 'abcdefghijklmnopqrstuvwxyz';
+            var correctHits = 0;
+            var incorrectHits = 0;
+            var time = 10;
+
+            function flash(valid = false) {
+                var hueRotation = valid ? 120 : 0;
+                _flash.classList.remove('show');
+                requestAnimationFrame(() => {
+                    _flash.style.filter = 'hue-rotate(' + hueRotation + 'deg)';
+                    _flash.classList.add('show');
+                    // Animate (but stop any previous animation first)
+                    clearTimeout(removeFlashTimeout);
+                    removeFlashTimeout = setTimeout(() => {
+                        _flash.classList.remove('show');
+                    }, 200);
+                });
+            }
+
+            function clearContainer() {
+                while(_target.firstChild) {
+                    _target.removeChild(_target.firstChild);
+                }
+            }
+
+            function showCharacter(character) {
+                var _el = document.createElement('span');
+                _el.classList.add('type-game-char');
+                _el.appendChild(document.createTextNode(character));
+                _target.appendChild(_el);
+
+                var left = Math.floor(Math.random() * (_target.clientWidth - _el.clientWidth));
+                var top = Math.floor(Math.random() * (_target.clientHeight - _el.clientHeight));
+                _el.style.left = left + 'px';
+                _el.style.top = top + 'px';
+            }
+
+            function nextCharacter() {
+                if (currentCharacterIndex >= message.length) currentCharacterIndex = 0;
+                currentCharacter = message[currentCharacterIndex++];
+                clearContainer();
+                showCharacter(currentCharacter);
+            }
+
+            function keyDownHandler(e) {
+                // To make sure the game doesnt keep running if we leave the page
+                if(!document.querySelector('.type-game')) {
+                    return document.body.removeEventListener('keydown', keyDownHandler);
+                }
+                // Ignore irrelevant keystrokes
+                if (captureCharacters.indexOf(e.key) === -1) return;
+                // Capture relevant ones
+                e.preventDefault();
+                var correctHit = (e.key === currentCharacter);
+                flash(correctHit);
+                nextCharacter();
+                if (correctHit) correctHits++;
+                else incorrectHits++;
+            }
+
+            function reduceTimer() {
+                _status.textContent = 'Time remaining: ' + time + 's';
+                if (time === 0) endGame();
+                else {
+                    setTimeout(reduceTimer, 1000);
+                }
+                time--;
+            }
+
+            function startGame() {
+                _startBtn.parentElement.removeChild(_startBtn);
+                document.body.addEventListener('keydown', keyDownHandler);
+                nextCharacter();
+                reduceTimer();
+            }
+
+            function endGame() {
+                clearContainer();
+                document.body.removeEventListener('keydown', keyDownHandler);
+                _target.textContent = 'Score: ' + (correctHits - incorrectHits) + ' points';
+            }
+
+            _startBtn.addEventListener('click', () => {
+                startGame();
+                document.body.focus();
+            })
+        })();
+    </script>
+    <!-- Widget ends here -->
+</body>
+</html>
