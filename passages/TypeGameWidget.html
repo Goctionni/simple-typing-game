@@ -1,0 +1,118 @@
+<<widget typeGame>>
+        <div class="type-game">
+            <<nobr>>
+                <div class="type-game-status"></div>
+                <div class="flash"></div>
+                <div class="type-game-area"></div>
+                <button type="button" class="type-game-button">Start game</button>
+                <span class="continue-button-container">
+                    <<button $typeGameReturnText $typeGameReturn>><</button>>
+                </span>
+            <</nobr>>
+        </div>
+        <<script>>
+            setTimeout(() => {
+                
+                var _container = document.querySelector('.type-game');
+                var _target = _container.querySelector('.type-game-area');
+                var _flash = _container.querySelector('.flash');
+                var _startBtn = _container.querySelector('.type-game-button');
+                var _continueBtnCnt = _container.querySelector('.continue-button-container');
+                var _status = _container.querySelector('.type-game-status');
+    
+                var removeFlashTimeout = 0;
+                var message = SugarCube.State.variables.typeGameMessage;
+                var currentCharacter = '';
+                var currentCharacterIndex = 0;
+                var captureCharacters = 'abcdefghijklmnopqrstuvwxyz';
+                var correctHits = 0;
+                var incorrectHits = 0;
+                var time = SugarCube.State.variables.typeGameDuration;
+    
+                function flash(valid = false) {
+                    var hueRotation = valid ? 120 : 0;
+                    _flash.classList.remove('show');
+                    requestAnimationFrame(() => {
+                        _flash.style.filter = 'hue-rotate(' + hueRotation + 'deg)';
+                        _flash.classList.add('show');
+                        // Animate (but stop any previous animation first)
+                        clearTimeout(removeFlashTimeout);
+                        removeFlashTimeout = setTimeout(() => {
+                            _flash.classList.remove('show');
+                        }, 200);
+                    });
+                }
+    
+                function clearContainer() {
+                    while(_target.firstChild) {
+                        _target.removeChild(_target.firstChild);
+                    }
+                }
+    
+                function showCharacter(character) {
+                    var _el = document.createElement('span');
+                    _el.classList.add('type-game-char');
+                    _el.appendChild(document.createTextNode(character));
+                    _target.appendChild(_el);
+    
+                    var left = Math.floor(Math.random() * (_target.clientWidth - _el.clientWidth));
+                    var top = Math.floor(Math.random() * (_target.clientHeight - _el.clientHeight));
+                    _el.style.left = left + 'px';
+                    _el.style.top = top + 'px';
+                }
+    
+                function nextCharacter() {
+                    if (currentCharacterIndex >= message.length) currentCharacterIndex = 0;
+                    currentCharacter = message[currentCharacterIndex++];
+                    clearContainer();
+                    showCharacter(currentCharacter);
+                }
+    
+                function keyDownHandler(e) {
+                    // To make sure the game doesnt keep running if we leave the page
+                    if(!document.querySelector('.type-game')) {
+                        return document.body.removeEventListener('keydown', keyDownHandler);
+                    }
+                    // Ignore irrelevant keystrokes
+                    if (captureCharacters.indexOf(e.key) === -1) return;
+                    // Capture relevant ones
+                    e.preventDefault();
+                    var correctHit = (e.key === currentCharacter);
+                    flash(correctHit);
+                    nextCharacter();
+                    if (correctHit) correctHits++;
+                    else incorrectHits++;
+                }
+    
+                function reduceTimer() {
+                    _status.textContent = 'Time remaining: ' + time + 's';
+                    if (time === 0) endGame();
+                    else {
+                        setTimeout(reduceTimer, 1000);
+                    }
+                    time--;
+                }
+    
+                function startGame() {
+                    _startBtn.parentElement.removeChild(_startBtn);
+                    document.body.addEventListener('keydown', keyDownHandler);
+                    nextCharacter();
+                    reduceTimer();
+                }
+    
+                function endGame() {
+                    clearContainer();
+                    var score = (correctHits - incorrectHits);
+                    document.body.removeEventListener('keydown', keyDownHandler);
+                    _target.textContent = 'Score: ' + score + ' points';
+                    SugarCube.State.variables.typeGameResult = { validHits: correctHits, invalidHits: incorrectHits, score };
+                    _continueBtnCnt.style.display = 'block';
+                }
+    
+                _startBtn.addEventListener('click', () => {
+                    startGame();
+                    document.body.focus();
+                })
+            }, 100);
+        <</script>>
+    <</widget>>
